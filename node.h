@@ -1,18 +1,18 @@
 #ifndef NODE_H
 #define NODE_H
 #include <iostream>
-#include <fstream>
 #include <vector>
 #include <string>
 #include <math.h>
 //#include "path.h"
-#include "usefull.h"
+//#include "usefull.cpp"
     using namespace std;
     class node
     {
     private:
     public:
         vector<struct path> paths;
+        vector<node*> eclosure;
         int N;
         int index;
         node(int N);
@@ -27,7 +27,7 @@
     
     struct path
     {
-        char state;
+        char state = '\0';
         node* to;
     };
 #endif

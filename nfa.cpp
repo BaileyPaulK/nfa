@@ -1,12 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <string>
 #include <math.h>
+#include <limits>
 
 //#include "path.h"
 #include "node.h"
-#include "usefull.h"
+#include "nodes.h"
+//#include "usefull.h"
 //#include "node.cpp"
 using namespace std;
 
@@ -23,23 +26,6 @@ future me look at
 
 
 
-class nodes
-{
-private:
-    int   findSpot(node*);
-public:
-    vector<node*> nodeList;
-    nodes();
-    ~nodes();
-    void addNode(node*);
-    node* addNode(int n);
-    node* addNode(string, int index);
-    node* findNode(int n);
-    void addPath(int index, string path);
-    int findSpot(int n);
-    int getNode(string arg, int point);
-    path getPath(string arg);
-};
 
 void DEBUG(nodes& NODES)
 {
@@ -54,9 +40,9 @@ void DEBUG(nodes& NODES)
         cout << endl << endl;
     }
 }
-int main() 
+
+void buildNFA(nodes& NODES)
 {
-    nodes NODES;
     ifstream inputfile ("input.txt");
     int currentNode = -1; //using nodes list because context is needed for adding paths
     string line;
@@ -67,9 +53,9 @@ int main()
         int point = 0;
         while (point >= 0 && point < line.size())
         {
+            cout << "line left :" << line.substr(point, line.length() - point) << endl;
             point = min(line.find('N', point), line.find('{', point)); //set point to nearest N or { ::find(line, point, 'N'), find(line, point, '{')
-            DEBUG(NODES);
-            //cout << "point :" << point << endl;
+            //DEBUG(NODES);
             switch (line[point])
             {
             case 'N':
@@ -80,7 +66,6 @@ int main()
             case '{':
                 path = line.substr(point, line.find('}', point + 2) - point + 1); //gross ik, but yeah
                 NODES.addPath(currentNode, path);
-                //cout << path << endl;
                 cout << "New path :" << NODES.nodeList[currentNode]->paths.back().state << "-> n" << NODES.nodeList[currentNode]->paths.back().to->N <<":" << endl;
                 point += path.size() - 1;
                 break;
@@ -91,170 +76,129 @@ int main()
         }
     }
     
-    inputfile.close();    
+    inputfile.close();
+}
+
+class DFA: public nodes
+{
+private:
+public:
+    DFA();
+    ~DFA();
+    node* buildEFrom(int N, nodes);
+};
+
+node* DFA::buildEFrom(int N, nodes Nodes)
+{
+    node* E = this->findNode(N);
+    if (E != NULL)  //check to make sure eclosure doesn't exist already
+    {
+        cout << "eclosure already found for that node" << endl;
+        return E;
+    }
+    E = Nodes.findNode(N);
+    deque<node*> toAdd;
+    node* startNode;
+    if (E != NULL)
+    {
+    toAdd.push_back(E);
+    startNode = this->addNode(N);
+    }
+    else
+    {
+        return NULL;
+    }
+    
+    while (toAdd.size() != 0)
+    {
+        E = toAdd.front();
+        //cout << ":" << E->N << ":";
+        toAdd.pop_front();
+        startNode->eclosure.push_back(E);
+        for (path path: E->paths) //checks for paths that have empty transitions
+        {                           //this part is a lil ugly ik, but isn't the worst looking and should be decently optimized (based on current search alg)
+            if (path.state == '\0')
+            {
+                int index = 0;
+                while (index < startNode->eclosure.size() - 1 && startNode->eclosure[index]->N != path.to->N)
+                {
+                    index ++;
+                }
+                if (startNode->eclosure[index]->N != path.to->N)
+                {
+                    index = 0;
+                    if (!toAdd.empty())
+                    {
+                        while (index < toAdd.size()  - 1 && toAdd[index]->N != path.to->N)
+                        {
+                            index ++;
+                        }
+                        if (toAdd[index]->N != path.to->N)
+                        {
+                            toAdd.push_back(path.to);
+                            //cout << "adding " << path.to->N << ", ";
+                        }
+                    }
+                    else
+                    {
+                        toAdd.push_back(path.to);
+                        //cout << "adding " << path.to->N << ", ";
+                    }
+                    
+                }
+                
+            }
+            
+        }
+        
+    }
+    return startNode;
+}
+
+DFA::DFA(/* args */)
+{
+}
+
+DFA::~DFA()
+{
+}
+
+
+int main() 
+{
+    nodes NFA;
+    buildNFA(NFA);
+    DEBUG(NFA);
+
+    DFA dfa;
+    node* ecloser;
+    int input;
+    while (input >= 0)
+    {
+        cout << endl << "input node to make eclosure from (or < 0 to stop): ";
+        cin >> input;
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        ecloser = dfa.buildEFrom(input, NFA);
+        if (ecloser != NULL)
+        {
+            cout << "ECLOSER" << endl;
+            for (node* node : ecloser->eclosure)
+            {
+                cout << "N" << node->N << ", ";
+            }
+            cout << endl;
+        }
+        else
+        {
+            cout << "That node... doesn't exist.... you good???" << endl;
+        }
+        
+    }
+    
+
     return 0;
 }
 
 
 
-
-void nodes::addPath(int index, string path)
-{
-
-}
-
-void nodes::addNode(node* newNode)
-{
-    int index = findSpot(newNode->N);
-    this->nodeList.insert(this->nodeList.begin() + index, newNode);
-    newNode->index = index;
-}
-
-node* nodes::addNode(string arg, int index)
-{
-    node* newNode   = new node(arg, index);
-    node* check     = this->findNode(newNode->N);
-    if (check == NULL) //Node doesn't exist yet
-    {
-        addNode(newNode);
-        return newNode;
-    }
-    cout << "node :" << newNode->N << ": already existed in list" << endl;
-    newNode->~node();
-    return check;
-}
-
-node* nodes::addNode(int n)
-{
-    node* newNode = new node(n);
-    addNode(newNode);
-    return newNode;
-}
-
-node* nodes::findNode(int n) //binary search for gross but need to get working first
-{
-    int index = findSpot(n);
-    if (index < this->nodeList.size() && this->nodeList[index]->N == n)
-    {
-        cout << n << " == " << this->nodeList[index]->N << endl;
-        return nodeList[index];
-    } 
-    /*else if (index + 1 < this->nodeList.size() && this->nodeList[index + 1]->N == n)
-    {
-        return nodeList[index + 1];
-    }*/
-    if (index < this->nodeList.size())
-    {
-        cout << n << " != " << this->nodeList[index]->N << endl;
-    } else
-    {
-        cout << n << " is larger than all current nodes" << endl;
-    }
-    
-    
-    return NULL;
-}
-
-
-nodes::nodes(/* args */)
-{
-}
-
-nodes::~nodes()
-{
-}
-
-int   nodes::findSpot(int n) //not efficent, want to eventually make a binary search
-{
-    int index = 0;
-    while (index < this->nodeList.size() && n > this->nodeList[index]->N)
-    {
-        index ++;
-    }
-    //if (n > this->nodeList[index]->N){index ++;}
-    return index;
-}
-
-int nodes::getNode(string arg, int point)
-{
-    int node = 0;
-    while (point < arg.size() && isdigit(arg[point]))
-    {
-        node = node * 10 + ((arg[point]) - '0');
-        point ++;
-    }
-    return node;
-}
-
-path nodes::getPath(string arg)
-{
-    int open    = -1; //where in string { is
-    int comma   = -1; //where in string , is
-    int close   = -1; //where in string } is
-    for (int scan = 0; scan < arg.size(); scan++)
-    {
-        switch (arg[scan])
-        {
-        case '{':
-            if (open < 0) //make sure only first instance of bracket is used
-            {
-                open = scan;
-            }
-            break;
-        case ',':
-            comma = scan; //always last instance
-            break;
-        case '}':
-            close = scan; //always last instance
-        default:
-            break;
-        }
-    }
-
-    char state;
-    int to      = -1;
-    int index   = 0;
-    if (comma > 0) //there is a non empty state 
-    {
-        //make sure state is properly formated
-        if (open >= 0 && open != comma - 2) // if isn't { ,
-        {
-            ERROR("non empty state of more than char:" + arg.substr(open, open - comma + 1) + ":");
-        } else if (open < 0 && comma != 1)
-        {
-            ERROR("non empty state of more than char:" + arg.substr(0, comma + 1) + ":");
-        } else
-        {
-            state = arg[comma -1]; //set state
-        }
-        //set to node
-        index = comma + 1;
-    }else //empty state
-    {
-        index = 0;
-    }
-    while (index < arg.size() && arg[index] != 'n')
-    {
-        //cout << arg[index] << " !n: ";
-        index++;
-    }
-    //cout << "!" << arg[index] << endl;
-    if (index == arg.size() || arg[index] != 'n') //make sure start of node was found
-    {
-        ERROR("no node found in:" + arg.substr(comma + 1, arg.size() - comma) + ": point:" + arg[index] + ": index :" + to_string(index) + ":");
-    }
-    index ++; //move past n marker
-    to = getNode(arg, index);
-    //index + floor(log10(to) + 1);
-    path addpath;
-    addpath.state = state;
-    node* node = this->findNode(to);
-    if (node == NULL)       //if to node doesn't exist yet, make it
-    {
-        //cout << "creating node :" << to << endl; 
-        node = this->addNode(to);
-    }
-    addpath.to = node;
-    //cout << ":path: " << addpath.state << " -> " << addpath.to->N << endl;
-    return addpath;
-}
