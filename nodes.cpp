@@ -152,10 +152,10 @@ path nodes::getPath(string arg)
         //make sure state is properly formated
         if (open >= 0 && open != comma - 2) // if isn't { ,
         {
-            //ERROR("non empty state of more than char:" + arg.substr(open, open - comma + 1) + ":");
+            ERROR("non empty state of more than char:" + arg.substr(open, open - comma + 1) + ":");
         } else if (open < 0 && comma != 1)
         {
-            //ERROR("non empty state of more than char:" + arg.substr(0, comma + 1) + ":");
+            ERROR("non empty state of more than char:" + arg.substr(0, comma + 1) + ":");
         } else
         {
             state = arg[comma -1]; //set state
@@ -174,7 +174,7 @@ path nodes::getPath(string arg)
     //cout << "!" << arg[index] << endl;
     if (index == arg.size() || arg[index] != 'n') //make sure start of node was found
     {
-        //ERROR("no node found in:" + arg.substr(comma + 1, arg.size() - comma) + ": point:" + arg[index] + ": index :" + to_string(index) + ":");
+        ERROR("no node found in:" + arg.substr(comma + 1, arg.size() - comma) + ": point:" + arg[index] + ": index :" + to_string(index) + ":");
     }
     index ++; //move past n marker
     to = getNode(arg, index);

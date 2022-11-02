@@ -1,11 +1,7 @@
-#ifndef USEFULL_H
-#define USEFULL_H
-#include <string>
-#include <iostream>
+#include "usefull.h"
 using namespace std;
-void ERROR(string err = "undefined error")
+void ERROR(string err)
 {
     cout << endl << "**********************************" << endl << "ERROR:" << err << endl << "**********************************" << endl;
     throw(err);
 }
-#endif
